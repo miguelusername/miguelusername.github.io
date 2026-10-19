@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artifacts &amp; Files — CS-499 ePortfolio</title>
+<meta name="description" content="Original and enhanced source for both artifacts, the narrative documents, and instructions for running the test suites.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <h1 class="name"><a href="index.html">Miguel Gigandet</a></h1>
+    <p class="tagline">B.S. Computer Science<br>
+      B.S. Game Programming &amp; Simulations<br>
+      <span class="school">Southern New Hampshire University</span></p>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html">Self-Assessment</a></li>
+        <li><a href="code-review.html">Code Review</a></li>
+        <li><a href="software-design.html">Software Design</a></li>
+        <li><a href="algorithms.html">Algorithms</a></li>
+        <li><a href="databases.html">Databases</a></li>
+        <li><a href="artifacts.html" aria-current="page">Artifacts</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<h1>Artifacts &amp; Files</h1>
+<p class="lede">Every version of every artifact, browsable in the repository. The narrative pages are the readable version; this page is the index for anyone who wants the source.</p>
+
+<h2>FrogBlog — Express / TypeScript / MongoDB</h2>
+
+<p>Carries the <a href="software-design.html">software design</a> and <a href="databases.html">database</a> enhancements. Originally built with a team for CS-465.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Version</th><th>Browse</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Original</strong></td>
+      <td><a href="https://github.com/miguelusername/miguelusername.github.io/tree/main/artifacts/frogblog/original">artifacts/frogblog/original</a></td>
+      <td>As it stood before this course. Flat <code>listeners/</code> folder, no middleware, no validation, no tests.</td>
+    </tr>
+    <tr>
+      <td><strong>Enhanced</strong></td>
+      <td><a href="https://github.com/miguelusername/miguelusername.github.io/tree/main/artifacts/frogblog/enhanced">artifacts/frogblog/enhanced</a></td>
+      <td>Layered architecture, shared auth middleware, Zod validation, normalized collections, indexes, transactions, schema validators, and 31 tests.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Files worth looking at first</h3>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>File</th><th>What it shows</th></tr></thead>
+  <tbody>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/src/middleware/auth.ts"><code>middleware/auth.ts</code></a></td><td>The shared authentication middleware that replaced the copy-pasted session checks</td></tr>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/src/errors.ts"><code>errors.ts</code></a></td><td><code>HttpError</code> and the single error handler every failure routes through</td></tr>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/src/models/schema.ts"><code>models/schema.ts</code></a></td><td>The <code>$jsonSchema</code> collection validators</td></tr>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/src/models/index.ts"><code>models/index.ts</code></a></td><td>Typed collections and the index definitions, including the unique compound index</td></tr>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/src/services/post.service.ts"><code>services/post.service.ts</code></a></td><td>The cascading delete inside a transaction</td></tr>
+    <tr><td><a href="artifacts/frogblog/enhanced/backend/tests/integration/constraints.test.ts"><code>tests/integration/constraints.test.ts</code></a></td><td>Tests that prove the database rejects what it should</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Running it</h3>
+
+<pre><code>cd backend
+npm install
+npm run typecheck   # TypeScript, strict
+npm test            # 8 unit tests, no database needed
+npm run test:db     # 23 integration tests against a real MongoDB
+npm run dev         # http://localhost:3000</code></pre>
+
+<p>MongoDB must be running as a single-node replica set — the cascading delete uses a transaction, which MongoDB only supports on a replica set. <code>npm run test:db</code> reads <code>.env.test</code> and refuses to run unless the database name ends in <code>_test</code>.</p>
+
+<hr>
+
+<h2>Zombie Taxi — Unity / C#</h2>
+
+<p>Carries the <a href="algorithms.html">algorithms and data structures</a> enhancement. Originally built with a team for GAM-360.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Version</th><th>Browse</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Original</strong></td>
+      <td><a href="https://github.com/miguelusername/miguelusername.github.io/tree/main/artifacts/zombie-taxi/original">artifacts/zombie-taxi/original</a></td>
+      <td>Per-frame scene searches, unthrottled path solving, no distance awareness, no tests.</td>
+    </tr>
+    <tr>
+      <td><strong>Enhanced</strong></td>
+      <td><a href="https://github.com/miguelusername/miguelusername.github.io/tree/main/artifacts/zombie-taxi/enhanced">artifacts/zombie-taxi/enhanced</a></td>
+      <td>Spatial hash grid, round-robin scheduler, level-of-detail selector, repath policy, and 37 tests.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <p><strong>Scope note.</strong> Zombie Taxi is an unreleased commercial project, so only the gameplay scripts and assembly definitions are published here. The Unity project itself — scenes, prefabs, art and audio — stays private. The code shown is the whole of what changed in this enhancement.</p>
+</div>
+
+<h3>Files worth looking at first</h3>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>File</th><th>What it shows</th></tr></thead>
+  <tbody>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Miguel%20Assets/AI/Core/SpatialHashGrid.cs"><code>AI/Core/SpatialHashGrid.cs</code></a></td><td>The uniform spatial hash grid</td></tr>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Miguel%20Assets/AI/Core/UpdateBudgetScheduler.cs"><code>AI/Core/UpdateBudgetScheduler.cs</code></a></td><td>The round-robin frame scheduler</td></tr>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Miguel%20Assets/AI/Core/AiDetailBands.cs"><code>AI/Core/AiDetailBands.cs</code></a></td><td>Distance-based level of detail</td></tr>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Miguel%20Assets/AI/ZombieManager.cs"><code>AI/ZombieManager.cs</code></a></td><td>Cached player reference, registry, spatial index and budget</td></tr>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Tests/EditMode/SpatialHashGridBenchmark.cs"><code>Tests/EditMode/SpatialHashGridBenchmark.cs</code></a></td><td>The benchmark behind the 20&times; figure</td></tr>
+    <tr><td><a href="artifacts/zombie-taxi/enhanced/Tests/EditMode/ChaseRepathPolicyTests.cs"><code>Tests/EditMode/ChaseRepathPolicyTests.cs</code></a></td><td>The regression test that caught the attack bug</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Test results</h3>
+
+<p>The suite runs under the Unity Test Framework inside the private project. Last full run: <strong>37 EditMode tests, 0 failures, 0 compile errors</strong> on Unity 6000.3.3f1. The test sources above are readable on their own — the three data structures are plain C# with no engine dependencies, which is exactly what makes them testable in isolation.</p>
+
+<hr>
+
+<h2>Documents</h2>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Document</th><th>Readable version</th><th>Download</th></tr></thead>
+  <tbody>
+    <tr><td>Professional Self-Assessment</td><td><a href="index.html">On this site</a></td><td><a href="artifacts/narratives/CS-499%20Professional%20Self%20Assessment.docx">DOCX</a></td></tr>
+    <tr><td>Enhancement One — Software Design</td><td><a href="software-design.html">On this site</a></td><td><a href="artifacts/narratives/CS-499%20Milestone%20Two.docx">DOCX</a></td></tr>
+    <tr><td>Enhancement Two — Algorithms</td><td><a href="algorithms.html">On this site</a></td><td><a href="artifacts/narratives/CS-499%20Milestone%20Three.docx">DOCX</a></td></tr>
+    <tr><td>Enhancement Three — Databases</td><td><a href="databases.html">On this site</a></td><td><a href="artifacts/narratives/CS-499%20Milestone%20Four.docx">DOCX</a></td></tr>
+  </tbody>
+</table>
+</div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Miguel Gigandet &middot; CS-499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+    <p>Source for this site and all artifacts: <a href="https://github.com/miguelusername/miguelusername.github.io">github.com/miguelusername</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
+

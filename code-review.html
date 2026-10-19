@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Review — CS-499 ePortfolio</title>
+<meta name="description" content="Informal code review walkthrough: existing functionality, code analysis, and planned enhancements across software design, algorithms, and databases.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <h1 class="name"><a href="index.html">Miguel Gigandet</a></h1>
+    <p class="tagline">B.S. Computer Science<br>
+      B.S. Game Programming &amp; Simulations<br>
+      <span class="school">Southern New Hampshire University</span></p>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html">Self-Assessment</a></li>
+        <li><a href="code-review.html" aria-current="page">Code Review</a></li>
+        <li><a href="software-design.html">Software Design</a></li>
+        <li><a href="algorithms.html">Algorithms</a></li>
+        <li><a href="databases.html">Databases</a></li>
+        <li><a href="artifacts.html">Artifacts</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<h1>Code Review</h1>
+<p class="lede">The before picture — recorded before any enhancement existed. A walkthrough of the existing code, an honest analysis of what was wrong with it, and a commitment to a plan.</p>
+
+<div class="video-frame">
+  <iframe src="https://drive.google.com/file/d/1XkAxzd4ZhUZRyrQcyg9EpeL4ZHrZ_Jpj/preview"
+          title="CS-499 Code Review — Miguel Gigandet"
+          allow="autoplay; fullscreen"
+          allowfullscreen></iframe>
+</div>
+
+<p class="video-fallback">If the player doesn't load, <a href="https://drive.google.com/file/d/1XkAxzd4ZhUZRyrQcyg9EpeL4ZHrZ_Jpj/view?usp=sharing">open the video directly in Google&nbsp;Drive</a>.</p>
+
+<h2>What the review covers</h2>
+
+<p>The audience for this review is peers and a manager rather than a grader, so it focuses on explaining how the code works and why each enhancement is worth doing, without getting lost in detail.</p>
+
+<h3>Existing functionality</h3>
+
+<p>A walkthrough of the FrogBlog backend as it stood: the custom <code>Endpoint</code> abstraction each route extends, how routes are registered, how Better Auth handles sessions, and how the protected routes check for a session cookie before doing anything.</p>
+
+<h3>Code analysis</h3>
+
+<p>Reviewed against a standard code review checklist. The findings that drove the enhancements:</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Area</th><th>Finding</th></tr></thead>
+  <tbody>
+    <tr><td>Structure</td><td>Leftover stubs — a <code>posts/</code> folder with two empty files and an interface that didn't match the real document shape.</td></tr>
+    <tr><td>Structure</td><td>Repeated code — the session check copy-pasted into two files, written two different ways.</td></tr>
+    <tr><td>Error handling</td><td>No centralized error middleware, and no try/catch around any database or auth call.</td></tr>
+    <tr><td>Defensive programming</td><td>Input arguments never validated. A malformed ID went straight into <code>new ObjectId()</code>, which throws.</td></tr>
+    <tr><td>Variables</td><td>Unused imports; <code>var</code> and <code>any</code> throughout a TypeScript project.</td></tr>
+    <tr><td>Efficiency</td><td>An N+1 lookup pattern, and a feed query with no pagination, no limit and no sort.</td></tr>
+    <tr><td>Configuration</td><td>Hardcoded URLs on both sides, despite an environment variable already existing.</td></tr>
+    <tr><td>Testing</td><td>No automated tests of any kind.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Planned enhancements</h3>
+
+<ul class="outcome-list">
+  <li><strong>Software design</strong> — extract a shared authentication middleware, add centralized error handling, validate every input, replace hardcoded values with configuration, and separate the code into layers. <a href="software-design.html">See what shipped &rarr;</a></li>
+  <li><strong>Algorithms and data structures</strong> — replace the per-frame scene search and the unthrottled path solving in the zombie AI, add a spatial index, and scale work to distance. <a href="algorithms.html">See what shipped &rarr;</a></li>
+  <li><strong>Databases</strong> — split comments into their own collection, replace the like counters with reaction records and a unique index, add the indexes the query patterns need, and enforce schema at the database. <a href="databases.html">See what shipped &rarr;</a></li>
+</ul>
+
+<h2>What changed after the review</h2>
+
+<p>Two things worth flagging, because a plan that survives contact with the work unchanged usually means nobody was paying attention.</p>
+
+<div class="callout">
+  <p><strong>The algorithms artifact changed.</strong> The review walks through FrogBlog for all three categories. The algorithms enhancement ultimately used Zombie Taxi instead, because a hundred agents competing for a frame budget is a performance problem a web backend simply doesn't have. The analysis of the existing Zombie Taxi pathfinding is written up on the <a href="algorithms.html">algorithms page</a> rather than shown on video.</p>
+  <p><strong>Validation moved down a layer.</strong> The review planned request validation at the API boundary, which is what the software design enhancement delivered. Working through the database enhancement convinced me that wasn't sufficient on its own, and the constraints ended up in the database as well.</p>
+</div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Miguel Gigandet &middot; CS-499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+    <p>Source for this site and all artifacts: <a href="https://github.com/miguelusername/miguelusername.github.io">github.com/miguelusername</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
+

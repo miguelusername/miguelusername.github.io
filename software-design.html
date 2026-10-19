@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software Design &amp; Engineering — FrogBlog Backend</title>
+<meta name="description" content="Enhancement One: shared authentication middleware, centralized error handling, schema validation, and a layered architecture for the FrogBlog Express/TypeScript backend.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <h1 class="name"><a href="index.html">Miguel Gigandet</a></h1>
+    <p class="tagline">B.S. Computer Science<br>
+      B.S. Game Programming &amp; Simulations<br>
+      <span class="school">Southern New Hampshire University</span></p>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html">Self-Assessment</a></li>
+        <li><a href="code-review.html">Code Review</a></li>
+        <li><a href="software-design.html" aria-current="page">Software Design</a></li>
+        <li><a href="algorithms.html">Algorithms</a></li>
+        <li><a href="databases.html">Databases</a></li>
+        <li><a href="artifacts.html">Artifacts</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<span class="category">Enhancement One &middot; Software Design and Engineering</span>
+<h1>FrogBlog Backend</h1>
+<p class="lede">An Express 5 and TypeScript API where every route handler did authentication, parsing, database access and the response all at once — restructured into layers with protection enforced by construction.</p>
+
+<div class="btn-row">
+  <a class="btn" href="artifacts/frogblog/original/backend/src/">Browse original code</a>
+  <a class="btn" href="artifacts/frogblog/enhanced/backend/src/">Browse enhanced code</a>
+  <a class="btn" href="artifacts/narratives/CS-499%20Milestone%20Two.docx">Narrative (DOCX)</a>
+</div>
+
+<h2>The artifact</h2>
+
+<p>FrogBlog is a full stack blog application I built with my classmates Melody and Julian for CS-465 in late 2025. It's an Express 5 and TypeScript API over MongoDB, with Better Auth handling sessions and a React frontend. Users can register, log in, write posts, and browse a feed.</p>
+
+<p>For the original project I handled the frontend. The backend was mostly my teammates' work, written the way most class projects get written: fast, and to get the demo working for the showcase. For this enhancement I took over the backend, which was the part of the stack I had the least hands-on experience with.</p>
+
+<h2>What was wrong</h2>
+
+<p>Nothing was crashing. The problems were structural, which is a more interesting thing to fix.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Finding</th><th>Why it mattered</th></tr></thead>
+  <tbody>
+    <tr><td>Duplicated session checks</td><td><code>auth.api.getSession</code> plus a 401 was copy-pasted into two files, written two different ways. Nothing stopped the next route from omitting it entirely.</td></tr>
+    <tr><td>No error handling</td><td>No Express error middleware anywhere, and no try/catch around any database or auth call.</td></tr>
+    <tr><td>No input validation</td><td>A malformed ID went straight to <code>new ObjectId()</code>, which throws — with nothing to catch it.</td></tr>
+    <tr><td>Hardcoded configuration</td><td>CORS origin hardcoded; the frontend had <code>http://localhost:3000</code> typed into five fetch calls despite an environment variable already existing for it.</td></tr>
+    <tr><td>Dead scaffolding</td><td>A <code>posts/</code> folder with two empty files and an interface that didn't match the real data.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Authentication: from copy-paste to declaration</h2>
+
+<p>The clearest single change. The check moved out of the handlers and became something a route opts into.</p>
+
+<div class="beforeafter">
+  <section class="pane before">
+    <header>Before — repeated in every protected handler</header>
+<pre><code>async handle(request, response, next) {
+    const session = await auth.api.getSession({
+        headers: fromNodeHeaders(request.headers)
+    })
+    if (session == null) {
+        response.status(401).json({})
+        return;
+    }
+    const user = session.user
+
+    // ...actual work finally starts here
+}</code></pre>
+  </section>
+  <section class="pane after">
+    <header>After — protection is declared</header>
+<pre><code>export class GetProfileEndpoint extends Endpoint {
+    get_type() { return RequestType.GET; }
+    get_endpoint() { return "/profile"; }
+
+    override get_middlewares() { return [requireAuth]; }
+
+    async handle(_request, response) {
+        const userId = new ObjectId(currentUser(response).id);
+        // ...work, with the user guaranteed
+    }
+}</code></pre>
+  </section>
+</div>
+
+<p>Two variants exist: <code>requireAuth</code> rejects anonymous requests with a 401, and <code>optionalAuth</code> lets them through but attaches the user when present, which is what lets the public feed show whether <em>you</em> reacted to each post.</p>
+
+<h2>Errors: one handler instead of none</h2>
+
+<div class="beforeafter">
+  <section class="pane before">
+    <header>Before — unguarded</header>
+<pre><code>var author = request.query.author
+
+if (author) {
+    // Throws on any malformed value.
+    // Nothing catches it.
+    query.author = new ObjectId(author)
+}</code></pre>
+  </section>
+  <section class="pane after">
+    <header>After — validated, then handled</header>
+<pre><code>const query = validate(listPostsQuerySchema, request.query);
+
+// Invalid input never reaches ObjectId. The schema
+// rejects it and the error middleware turns the
+// failure into a 400 naming the offending field.</code></pre>
+  </section>
+</div>
+
+<p>Handlers now simply <code>throw notFound()</code>, <code>forbidden()</code> or <code>badRequest()</code>. Express 5 routes rejected promises to the error middleware automatically, so none of them need try/catch. The handler maps everything — my own errors, Better Auth errors, MongoDB duplicate keys, and genuinely unexpected exceptions — into one consistent JSON shape.</p>
+
+<h2>Structure</h2>
+
+<p>The backend went from a flat <code>listeners/</code> folder to explicit layers:</p>
+
+<pre><code>src/
+â”œâ”€â”€ config.ts          every environment-driven setting, in one place
+â”œâ”€â”€ errors.ts          HttpError + the centralized handler
+â”œâ”€â”€ validation.ts      Zod helpers
+â”œâ”€â”€ listener.ts        Endpoint base class (method, path, middleware, handler)
+â”œâ”€â”€ middleware/
+â”‚   â””â”€â”€ auth.ts        requireAuth / optionalAuth
+â”œâ”€â”€ models/            document types, input schemas, typed collections
+â”œâ”€â”€ services/          business logic and all database access
+â”œâ”€â”€ utils/             pure algorithms + their unit tests
+â””â”€â”€ listeners/         one class per route: validate, delegate, respond</code></pre>
+
+<p>Request flow is now <strong>listener</strong> (validate) â†’ <strong>service</strong> (logic and data) â†’ <strong>models</strong> (typed collections). Adding an endpoint went from "copy the closest existing one and edit it" to "write a schema, write a service function, wire it up."</p>
+
+<h2>Skills demonstrated</h2>
+
+<ul class="outcome-list">
+  <li><strong>Middleware design</strong> — extending an existing routing abstraction with a middleware hook rather than replacing it, so teammates' code kept working.</li>
+  <li><strong>Separation of concerns</strong> — a layered architecture where each kind of logic has an obvious home.</li>
+  <li><strong>Defensive programming</strong> — validation at the boundary and a single place where failures become responses.</li>
+  <li><strong>Configuration management</strong> — environment-driven settings with a documented <code>.env.example</code>.</li>
+  <li><strong>Authorization</strong> — ownership checks so a logged-in user can only modify their own content.</li>
+</ul>
+
+<h2>Course outcomes</h2>
+
+<ul class="outcome-list">
+  <li><strong>Outcome 4 — well-founded techniques and tools:</strong> the middleware pattern, a validation library, layered architecture and environment-driven config are the standard ways of solving these problems in the Express ecosystem, used as intended rather than reinvented.</li>
+  <li><strong>Outcome 5 — security mindset:</strong> input is validated at the boundary, authentication is enforced by construction instead of by remembering, and modifying a post verifies ownership and returns 403 otherwise.</li>
+  <li><strong>Outcome 2 — professional communication:</strong> a rewritten README documenting the full API and the replica-set setup requirement, written so someone else can actually run the project.</li>
+</ul>
+
+<h2>Verification</h2>
+
+<div class="callout">
+  <p><strong>TypeScript typecheck</strong> clean under strict mode, including <code>exactOptionalPropertyTypes</code>.</p>
+  <p><strong>8 unit tests</strong> on the pure logic, and <strong>23 integration tests</strong> added later against a real MongoDB that exercise the auth middleware, validation and ownership paths end to end.</p>
+</div>
+
+<p>The integration tests came directly from instructor feedback on this milestone, which asked me to keep developing automated tests to verify the architectural and security improvements. They're documented on the <a href="databases.html">databases page</a>, since that's where they were built.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Miguel Gigandet &middot; CS-499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+    <p>Source for this site and all artifacts: <a href="https://github.com/miguelusername/miguelusername.github.io">github.com/miguelusername</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
+

@@ -1,0 +1,30 @@
+{
+  "name": "frogblog",
+  "version": "1.0.0",
+  "description": "A swamp-themed blog platform for sharing stories and pictures",
+  "author": {
+    "name": "Miguel",
+    "email": "miguel@snhu.edu"
+  },
+  "contributors": [
+    {
+      "name": "Melody",
+      "email": "melody@snhu.edu",
+      "url": "https://github.com/Melody"
+    },
+    {
+      "name": "Julian",
+      "email": "julian@snhu.edu",
+      "url": "https://github.com/Julian"
+    }
+  ],
+  "devDependencies": {
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "msw": "^2.12.2"
+  },
+  "dependencies": {
+    "better-auth": "^1.4.1"
+  }
+}

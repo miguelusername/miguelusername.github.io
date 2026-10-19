@@ -1,0 +1,172 @@
+/* Background image source: https://pixnio.com/nature-landscapes/creek-stream/swamp-landscape-leaf-tree-wood-wetland-land-nature
+   License: CC0 Public Domain - Free for commercial and personal use */
+
+.landing-page {
+  text-align: center;
+  padding: 2rem;
+  background-image: url('../assets/swamp-background.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  position: relative;
+  width: 100%;
+}
+
+.landing-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.landing-page > * {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-section {
+  margin-bottom: 4rem;
+  color: white;
+}
+
+.hero-logo {
+  height: 120px;
+  width: auto;
+  margin-bottom: 0.5rem;
+}
+
+.hero-section h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #90EE90;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.hero-section p {
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  font-size: 1.2rem;
+}
+
+.test-credentials {
+  background-color: rgba(74, 124, 89, 0.9);
+  border: 2px solid #90EE90;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem auto;
+  max-width: 400px;
+}
+
+.test-credentials p {
+  margin: 0;
+  font-size: 1rem;
+  color: white;
+}
+
+.test-credentials strong {
+  color: #90EE90;
+}
+
+.cta-buttons {
+  margin-top: 2rem;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  margin: 0 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  text-shadow: none;
+}
+
+.btn-primary {
+  background-color: #4a7c59;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #2d5a27;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.btn-secondary:hover {
+  background-color: white;
+  border-color: white;
+}
+
+.features {
+  background-color: rgba(45, 90, 39, 0.9);
+  color: white;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  margin: 2rem auto;
+  max-width: 1000px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.features h2 {
+  color: #90EE90;
+  margin-bottom: 2rem;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.feature {
+  padding: 1.5rem;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.feature h3 {
+  color: #90EE90;
+  margin-bottom: 1rem;
+}
+
+.feature p {
+  color: white;
+  line-height: 1.5;
+}
+
+.image-credit {
+  margin-top: 3rem;
+  padding: 1rem;
+}
+
+.image-credit p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.image-credit a {
+  color: #90EE90;
+  text-decoration: none;
+}
+
+.image-credit a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .landing-page {
+    background-attachment: scroll;
+    background-size: cover;
+  }
+}

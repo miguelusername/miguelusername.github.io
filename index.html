@@ -1,6 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Miguel Gigandet — CS-499 ePortfolio</title>
+<meta name="description" content="Computer Science capstone ePortfolio: professional self-assessment, code review, and three enhanced artifacts in software design, algorithms, and databases.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
 <body>
-    <h1>Miguel's GitHub page.</h1>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <h1 class="name"><a href="index.html">Miguel Gigandet</a></h1>
+    <p class="tagline">B.S. Computer Science<br>
+      B.S. Game Programming &amp; Simulations<br>
+      <span class="school">Southern New Hampshire University</span></p>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html" aria-current="page">Self-Assessment</a></li>
+        <li><a href="code-review.html">Code Review</a></li>
+        <li><a href="software-design.html">Software Design</a></li>
+        <li><a href="algorithms.html">Algorithms</a></li>
+        <li><a href="databases.html">Databases</a></li>
+        <li><a href="artifacts.html">Artifacts</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<h1>Professional Self-Assessment</h1>
+<p>My journey as a programmer started with QBasic in high school, of all languages to start with. The classes after that were C++ and Java, and that's when it clicked that coding was the thing I was actually good at. Wanting to make games came after. So I came to SNHU for Game Programming and Simulations, and partway through, once I'd looked properly at how competitive that job market is, I added Computer Science as a second major to give myself a real fallback rather than a hopeful one.</p>
+
+<p>The two artifacts here come from those two halves. One is the backend of a blog platform. The other is the zombie AI from a game I built with a team, where a hundred of them wander the city on their own until the player's taxi gets close enough that they drop what they're doing and chase it. Those look like unrelated projects until you notice they're the same problem: a system that has to stay correct and stay fast while a lot of things happen at once. The backup plan turned out to be the same skill set pointed at a different product.</p>
+
+<p>What the capstone did specifically was force me back into code I'd already shipped, to look at it honestly. That's a different exercise from writing something new. Writing new code, you only have to convince yourself. Going back into working code means explaining why it's fragile, deciding what's actually worth changing, and then proving the change didn't break anything. That's closer to the job than anything else I did in the program.</p>
+
+<h2>Collaborating in a team environment</h2>
+
+<p>Both of the artifacts here started as team projects, and in each case the part I ended up enhancing wasn't the part I originally built. FrogBlog was built with two classmates in CS-465, and I handled the frontend while they wrote the backend. Zombie Taxi was a team project in GAM-360 where I worked on the zombie systems and the car's player controller, while other people handled map design, art, the upgrade system and the rest.</p>
+
+<p>The capstone put me in a position I think is genuinely common and not often practiced: improving code that other people depend on and that I didn't write. A lot of what I learned there wasn't technical. When I restructured the zombie AI, my first instinct was to tear out the custom routing abstraction the project used and replace it with the standard approach. I decided not to, because the abstraction was fine, it just needed a way to attach middleware, and a rewrite would have handed my teammates a merge conflict in a file nobody can read a diff of. I made the same call about Unity's serialized fields. Renaming one doesn't fail to compile, it silently resets the value on every prefab, so hours of somebody's tuning disappear and the only symptom is that the game feels slightly wrong. I left every existing field name alone and added new ones beside them.</p>
+
+<p>That instinct, that a technically cleaner change which breaks a teammate's build is not actually better, is the thing I'd most want a team to know about how I work.</p>
+
+<h2>Communicating with stakeholders</h2>
+
+<p>The code review that opened this capstone was written for peers and a manager, not for a compiler. I had to explain what the code did, why it was fragile, and what I planned to do about it, to someone who hadn't read it. That's a skill I'd barely practiced.</p>
+
+<p>The written side got more attention than I expected across the term. Each enhancement needed a narrative explaining not just what I built but what it cost and what I gave up to get it, and I rewrote both project READMEs so that someone could clone the repository and actually run it, including the parts that are genuinely annoying, like needing MongoDB configured as a replica set before the app will start. Writing for two audiences at once, an engineer who needs to build it and a reader who needs to understand why it matters, is most of what this portfolio is.</p>
+
+<p>I also learned something about evidence. My instructor's feedback on the first enhancement asked me to keep developing automated tests, and on the second to include testing results showing my optimizations hadn't changed behavior. Both notes were really about the same thing, which is that claims need proof attached. By the third enhancement I'd stopped writing "this is faster" and started writing "here is the benchmark, here are the numbers, and here is the test that fails if I break it again."</p>
+
+<h2>Data structures and algorithms</h2>
+
+<p>When I had to pick an artifact for the algorithms category, game AI pathfinding was the first thing that came to mind, and the zombies from Zombie Taxi were the obvious place to find it. The thing I'm proudest of in that enhancement is that the reasoning is visible rather than just the result.</p>
+
+<p>The original code had every zombie independently searching the entire scene for the player every frame, recalculating a full navigation path every frame, and running identical logic whether it was under the player's bumper or on the far side of the map. I replaced that with three structures: a uniform spatial hash grid so proximity queries only inspect the cells a search actually overlaps, a round robin scheduler so the per-frame cost of the horde is capped by a budget rather than by the population, and a distance based level of detail selector so expensive work scales with what the player can actually perceive. The nearest-agent query went from about 10 microseconds to half a microsecond, measured rather than asserted.</p>
+
+<p>What I actually learned is that the fix for a performance problem is usually not making the slow thing faster, it's not doing the slow thing. I didn't optimize the scene search, I deleted it. I didn't speed up pathfinding, I stopped asking for paths that weren't needed. And every one of those choices bought something at a price: the scheduler trades decision latency for a bounded frame cost, the grid trades memory and a periodic rebuild for fast queries. Being able to name the price is the part that makes it engineering instead of guessing.</p>
+
+<h2>Software engineering and databases</h2>
+
+<p>The FrogBlog backend covers both of these, and the lesson that connects them is about where a rule should live.</p>
+
+<p>On the software engineering side, the original backend did everything inside its route handlers. Authentication, parsing, database access and the response all in one place, which is exactly why the session check had been copy pasted into multiple files in different styles and why error handling had never been written at all. I pulled authentication into shared middleware that routes opt into, added a single error handler that turns every failure into a consistent response, put schema validation in front of every request, and split the code into layers where route handlers validate and delegate, services hold the logic, and models define the shapes. Adding an endpoint went from copying the nearest existing one to writing a schema, writing a service function, and wiring it up.</p>
+
+<p>On the database side, the original schema allowed things it shouldn't have. Comments weren't a real entity, they were posts with a parent field, so they leaked into the main feed. Likes were a bare number with no record of who cast them, so nothing prevented the same person liking a post fifty times. There were no indexes at all. I split comments into their own collection, replaced the counters with a reaction collection carrying a unique compound index, added the indexes the real query patterns need, made post deletion cascade to its comments and reactions inside a transaction, and put JSON Schema validators on the collections themselves.</p>
+
+<p>That last decision is the one I'd defend hardest. I already had validation at the API boundary, and I spent real time deciding whether that was enough before concluding it wasn't, because the API isn't the only thing that writes to a database. A migration script doesn't go through it. Neither does a console session or a service someone writes next year. A rule in the application protects the paths that go through the application. A rule in the database protects everything.</p>
+
+<h2>Security</h2>
+
+<p>Security stopped being a checklist item for me during this capstone and became a way of deciding where to put things.</p>
+
+<p>The starting point was ordinary: input wasn't validated, so a malformed identifier in a query string would throw an uncaught exception, and a protected route could be added without an authentication check because nothing enforced one. Validating every request body, query parameter and route parameter fixed the first. Making authentication a middleware that routes declare fixed the second, because protection became something you opt into by construction rather than something you remember.</p>
+
+<p>Where it got more interesting was the database. The constraints I added hold whether or not the application behaves correctly. A unique index means stuffing the like count isn't a matter of the client being polite. Rejecting fields the model never described means a request body can't smuggle in something it shouldn't, which is the shape of a mass assignment vulnerability. Checking ownership before an edit or delete means a logged in user still can't touch somebody else's post. Each of those assumes the layer above it will eventually be wrong or be bypassed, and that assumption is really what a security mindset is.</p>
+
+<hr>
+
+<h2>How the artifacts fit together</h2>
+
+<p>There are two artifacts in this portfolio and three enhancements across them.</p>
+
+<div class="cards">
+  <article class="card">
+    <span class="category">Software Design</span>
+    <h3>FrogBlog Backend</h3>
+    <p>Shared authentication middleware, centralized error handling, schema validation, and a layered architecture replacing route handlers that did everything at once.</p>
+    <a class="btn" href="software-design.html">Read the narrative</a>
+  </article>
+  <article class="card">
+    <span class="category">Algorithms &amp; Data Structures</span>
+    <h3>Zombie Taxi AI</h3>
+    <p>A spatial hash grid, a round-robin update scheduler, and distance-based level of detail, bounding the per-frame cost of a hundred agents.</p>
+    <a class="btn" href="algorithms.html">Read the narrative</a>
+  </article>
+  <article class="card">
+    <span class="category">Databases</span>
+    <h3>FrogBlog Data Model</h3>
+    <p>Normalized collections, a unique compound index, cascading deletes in a transaction, and schema validation enforced by the database itself.</p>
+    <a class="btn" href="databases.html">Read the narrative</a>
+  </article>
+</div>
+
+<p><strong>FrogBlog</strong>, a full stack blog application from CS-465, carries the software design and the database enhancements. These are deliberately two different views of the same project: the first is about how the code is organized and the second is about how the data is shaped and what the database guarantees on its own. Taken together they show a backend going from working to defensible.</p>
+
+<p><strong>Zombie Taxi</strong>, a Unity game from my GAM-360 class, carries the algorithms and data structures enhancement. It's here because a hundred nav agents thinking at once creates a performance problem a web backend doesn't, and because solving it required reasoning about complexity and trade-offs rather than architecture.</p>
+
+<p>The <a href="code-review.html">code review</a> that precedes them is the before picture. It's me walking through both projects, naming what's wrong, and committing to a plan, recorded before any of the enhancements existed.</p>
+
+<p>What ties all three together is verification. Every enhancement in this portfolio has evidence attached:</p>
+
+<div class="metrics">
+  <div class="metric"><span class="value">37</span><span class="label">tests on the game code</span></div>
+  <div class="metric"><span class="value">31</span><span class="label">tests on the backend</span></div>
+  <div class="metric"><span class="value">23</span><span class="label">run against a real database</span></div>
+  <div class="metric"><span class="value">20&times;</span><span class="label">measured query speedup</span></div>
+</div>
+
+<p>That wasn't my instinct at the start of the term. It is now, and it came from being told twice that a claim needs proof. If there's one thing in this portfolio I'd point an employer at, it isn't any single feature. It's that I can look at working code, explain why it's fragile, make it sturdier, and then show you that I didn't break it.</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Miguel Gigandet &middot; CS-499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+    <p>Source for this site and all artifacts: <a href="https://github.com/miguelusername/miguelusername.github.io">github.com/miguelusername</a></p>
+  </div>
+</footer>
+
 </body>
 </html>
+

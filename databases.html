@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Databases — FrogBlog MongoDB Data Model</title>
+<meta name="description" content="Enhancement Three: normalized collections, a unique compound index, cascading deletes in a transaction, and JSON Schema validation enforced by MongoDB itself.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="inner">
+    <h1 class="name"><a href="index.html">Miguel Gigandet</a></h1>
+    <p class="tagline">B.S. Computer Science<br>
+      B.S. Game Programming &amp; Simulations<br>
+      <span class="school">Southern New Hampshire University</span></p>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="index.html">Self-Assessment</a></li>
+        <li><a href="code-review.html">Code Review</a></li>
+        <li><a href="software-design.html">Software Design</a></li>
+        <li><a href="algorithms.html">Algorithms</a></li>
+        <li><a href="databases.html" aria-current="page">Databases</a></li>
+        <li><a href="artifacts.html">Artifacts</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<span class="category">Enhancement Three &middot; Databases</span>
+<h1>FrogBlog — MongoDB Data Model</h1>
+<p class="lede">A schema that quietly allowed things it shouldn't have: comments that weren't comments, like counts nobody owned, and no indexes at all.</p>
+
+<div class="btn-row">
+  <a class="btn" href="artifacts/frogblog/enhanced/backend/src/models/">Browse the models</a>
+  <a class="btn" href="artifacts/frogblog/enhanced/backend/tests/integration/">Browse the integration tests</a>
+  <a class="btn" href="artifacts/narratives/CS-499%20Milestone%20Four.docx">Narrative (DOCX)</a>
+</div>
+
+<h2>The artifact</h2>
+
+<p>The same FrogBlog project as the <a href="software-design.html">software design enhancement</a>, but a different part of it. That one was about how the code is organized. This one is about how the data is shaped and what the database guarantees on its own.</p>
+
+<p>Going back into it meant learning the data layer of a project I had only ever consumed through <code>fetch</code> calls.</p>
+
+<h2>What the original schema allowed</h2>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Finding</th><th>Consequence</th></tr></thead>
+  <tbody>
+    <tr><td>Comments weren't an entity — a comment was a post with a <code>parent</code> field</td><td>Comments leaked into the main feed as if they were posts. Every post query had to know the trick. Nothing stopped a reply from pointing at a comment on a different post.</td></tr>
+    <tr><td><code>likes</code> and <code>dislikes</code> were bare numbers</td><td>No record of who reacted, so nothing prevented the same user liking a post fifty times, and "have I already liked this?" was unanswerable. No endpoint even incremented them.</td></tr>
+    <tr><td>No indexes</td><td>Every query a full collection scan, including the author filter the profile page runs on every visit.</td></tr>
+    <tr><td>No validation</td><td>A document's shape was whatever the handler happened to write that day.</td></tr>
+    <tr><td>No referential integrity</td><td>MongoDB won't enforce it for you, and nothing in the application was doing it instead.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>The data model now</h2>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Collection</th><th>Key fields</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>user</code></td><td><code>_id</code>, <code>name</code>, <code>email</code></td><td>Managed by Better Auth — deliberately not schema-pinned</td></tr>
+    <tr><td><code>profile</code></td><td><code>_id</code> (= user id), <code>bio</code>, <code>birthday</code></td><td>One per user, upserted</td></tr>
+    <tr><td><code>post</code></td><td><code>_id</code>, <code>author</code>, <code>title</code>, <code>content</code>, <code>createdAt</code></td><td>Posts are posts again</td></tr>
+    <tr><td><code>comment</code></td><td><code>_id</code>, <code>postId</code>, <code>parentId</code>, <code>author</code>, <code>content</code></td><td><code>parentId</code> null for top level; a reply must be on the same post</td></tr>
+    <tr><td><code>reaction</code></td><td><code>_id</code>, <code>userId</code>, <code>postId</code>, <code>type</code></td><td>One document per user per post</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Indexes</h3>
+
+<pre><code>post      { author: 1, _id: -1 }        author_recent
+comment   { postId: 1, createdAt: 1 }   post_thread
+reaction  { userId: 1, postId: 1 }      one_per_user_post   UNIQUE
+reaction  { postId: 1, type: 1 }        post_counts</code></pre>
+
+<p><code>one_per_user_post</code> is doing more than making a query fast. Being unique, <em>it</em> is what makes a second reaction from the same user impossible. The application checks too, but the index is the guarantee.</p>
+
+<h2>Counters became records</h2>
+
+<div class="beforeafter">
+  <section class="pane before">
+    <header>Before — a number anyone could increment</header>
+<pre><code>var obj = {
+    _id: new ObjectId(),
+    author: new ObjectId(user.id),
+    title,
+    content,
+    upload_date: new Date(),
+    likes: 0,
+    dislikes: 0
+}</code></pre>
+  </section>
+  <section class="pane after">
+    <header>After — one row per user per post</header>
+<pre><code>await collections.reactions().updateOne(
+    { userId, postId },
+    { $set: { type },
+      $setOnInsert: { _id: new ObjectId(),
+                      userId, postId,
+                      createdAt: new Date() } },
+    { upsert: true },
+);</code></pre>
+  </section>
+</div>
+
+<p>Counts are now derived from that collection with a <code>$group</code> aggregation rather than stored as a mutable number, which means the counts and the reactions can't drift apart. The upsert plus the unique index makes setting a reaction idempotent: repeating a like is a no-op, and switching like to dislike updates the same row.</p>
+
+<h2>Deletion is atomic</h2>
+
+<p>MongoDB has no cascading foreign keys, so deleting a post removes its comments and reactions explicitly — inside a transaction, so either all three happen or none do. This is what required running MongoDB as a replica set, since transactions aren't available on a standalone instance.</p>
+
+<pre><code>const session = client.startSession();
+try {
+    await session.withTransaction(async () =&gt; {
+        await collections.comments().deleteMany({ postId: id }, { session });
+        await collections.reactions().deleteMany({ postId: id }, { session });
+        await collections.posts().deleteOne({ _id: id }, { session });
+    });
+} finally {
+    await session.endSession();
+}</code></pre>
+
+<h2>Validation, moved into the database</h2>
+
+<p>The piece I added specifically for this enhancement, and the decision I'd defend hardest.</p>
+
+<p>I already had Zod validating input at the API boundary from the software design enhancement, and I spent real time deciding whether that was enough before concluding it wasn't. Zod only protects writes that come through the API. My own migration script doesn't go through it. Neither does a console session, or a service someone writes next year.</p>
+
+<p>Every collection except <code>user</code> now carries a <code>$jsonSchema</code> validator specifying required fields, types, string lengths, the allowed reaction values, and <code>additionalProperties: false</code> so a write can't smuggle in a field the model doesn't describe. <code>user</code> is left out on purpose: Better Auth owns that shape and may change it between versions, and pinning a schema to it would break logins on an upgrade.</p>
+
+<div class="callout">
+  <p><strong>Mongoose vs. the native driver.</strong> I asked about this in two separate journals. Better Auth's adapter uses the native MongoDB driver, so adding Mongoose would mean two data-access layers in one small app. Working through it is what led me here, and I now think this is the better answer: Mongoose validates in the application process; <code>$jsonSchema</code> validates in the database. The constraint ends up closer to the data instead of further from it.</p>
+</div>
+
+<p>I used <code>validationLevel: "moderate"</code> rather than strict, so pre-existing non-conforming documents stay writable and the migration script is the path to bring them forward. Less satisfying than strict, and the right call with real data.</p>
+
+<h2>Proving the guarantees hold</h2>
+
+<p>My existing tests covered pure helper functions — pagination maths, comment-tree assembly. Nothing touched the database, which is a real gap when every claim here is about what MongoDB guarantees.</p>
+
+<p>So: 23 integration tests against a real MongoDB, covering the things that only exist at the database level.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>What's tested</th><th>Why it needs a real database</th></tr></thead>
+  <tbody>
+    <tr><td>A user cannot react twice to the same post</td><td>Only the unique index can prove this, and only by rejecting the write</td></tr>
+    <tr><td>Different users may each react; one user may react to different posts</td><td>Confirms the index constrains the right thing and nothing more</td></tr>
+    <tr><td>A post with no content, a wrongly typed date, or an unexpected field is rejected</td><td>The validator lives in MongoDB, not in application code</td></tr>
+    <tr><td>Deleting a post removes its comments and reactions, and not another post's</td><td>Transaction behaviour across three collections</td></tr>
+    <tr><td>A failed authorization check deletes nothing at all</td><td>No partial writes on the unhappy path</td></tr>
+    <tr><td>Pagination walks a twelve-post feed in pages of five, each post exactly once, newest first</td><td>Cursor ordering guarantees over real documents</td></tr>
+    <tr><td>Author names degrade to a placeholder when the user is deleted</td><td>Missing references shouldn't break the feed</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>The suite reads its database name from <code>.env.test</code> and <strong>refuses to start unless that name ends in <code>_test</code></strong>, because it deletes documents and drops the database when it finishes.</p>
+
+<div class="metrics">
+  <div class="metric"><span class="value">8</span><span class="label">unit tests</span></div>
+  <div class="metric"><span class="value">23</span><span class="label">integration tests</span></div>
+  <div class="metric"><span class="value">40</span><span class="label">end-to-end API checks</span></div>
+  <div class="metric"><span class="value">0</span><span class="label">failures</span></div>
+</div>
+
+<h2>Skills demonstrated</h2>
+
+<ul class="outcome-list">
+  <li><strong>Normalization</strong> — splitting a conflated collection into entities that model what they actually are.</li>
+  <li><strong>Indexing strategy</strong> — indexes chosen from real query patterns, including a unique compound index used as a constraint rather than an optimization.</li>
+  <li><strong>Transactions and referential integrity</strong> — cascading deletes made atomic, in a database that won't do it for you.</li>
+  <li><strong>Aggregation</strong> — deriving counts rather than storing them, so they cannot drift.</li>
+  <li><strong>Schema enforcement</strong> — JSON Schema validators at the collection level, with a deliberate validation level.</li>
+  <li><strong>Migration</strong> — an idempotent script that brings legacy documents to the new shape.</li>
+  <li><strong>Integration testing</strong> — tests against a real database, with a guard so they can't touch development data.</li>
+</ul>
+
+<h2>Course outcomes</h2>
+
+<ul class="outcome-list">
+  <li><strong>Outcome 4 — well-founded techniques and tools:</strong> the strongest case in this portfolio. Normalization, indexing, referential integrity, transactions, schema enforcement and a migration path, each used for a stated reason rather than because it was on a list.</li>
+  <li><strong>Outcome 5 — security mindset:</strong> most of what I did here is a constraint that holds whether or not the application behaves. A unique index means stuffing the like count isn't a matter of the client being polite. <code>additionalProperties: false</code> means a request body can't inject a field the model never intended, which is the shape of a mass assignment vulnerability. Validating at the database rather than only at the boundary is defense in depth — it assumes the layer above will eventually be wrong or bypassed.</li>
+  <li><strong>Outcome 3 — algorithmic principles:</strong> a smaller contribution, through the indexing and aggregation decisions.</li>
+</ul>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    <p>Miguel Gigandet &middot; CS-499 Computer Science Capstone &middot; Southern New Hampshire University</p>
+    <p>Source for this site and all artifacts: <a href="https://github.com/miguelusername/miguelusername.github.io">github.com/miguelusername</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
+
